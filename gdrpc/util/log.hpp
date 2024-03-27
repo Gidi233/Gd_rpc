@@ -1,14 +1,11 @@
 #ifndef _LOG_H_
 #define _LOG_H_
 
-#include <chrono>
-#include <fstream>
 #include <functional>
-#include <iomanip>
 #include <iostream>
 #include <sstream>
-#include <string>
 
+namespace gdrpc {
 namespace gdlog {
 // 数据生产者部分
 class Logger {
@@ -52,22 +49,25 @@ class Logger {
   inline static FlushFunc g_flush_ = []() { std::cout.flush(); };
 };
 }  // namespace gdlog
-
+}  // namespace gdrpc
 // #define LOG_TRACE                                        \
-//   if (gdlog::Logger::logLevel() <= gdlog::Logger::TRACE) \
-//   gdlog::Logger(__FILE__, __LINE__, gdlog::Logger::TRACE, __func__).stream()
-#define LOG_DEBUG                                        \
-  if (gdlog::Logger::logLevel() <= gdlog::Logger::DEBUG) \
-  gdlog::Logger(__FILE__, __LINE__, gdlog::Logger::DEBUG, __func__).stream()
-#define LOG_INFO                                        \
-  if (gdlog::Logger::logLevel() <= gdlog::Logger::INFO) \
-  gdlog::Logger(__FILE__, __LINE__, gdlog::Logger::INFO).stream()
-#define LOG_WARN gdlog::Logger(__FILE__, __LINE__, gdlog::Logger::WARN).stream()
+//   if (gdrpc::gdlog::Logger::logLevel() <= gdrpc::gdlog::Logger::TRACE) \
+//   gdrpc::gdlog::Logger(__FILE__, __LINE__, gdrpc::gdlog::Logger::TRACE, __func__).stream()
+#define LOG_DEBUG                                                       \
+  if (gdrpc::gdlog::Logger::logLevel() <= gdrpc::gdlog::Logger::DEBUG)  \
+  gdrpc::gdlog::Logger(__FILE__, __LINE__, gdrpc::gdlog::Logger::DEBUG, \
+                       __func__)                                        \
+      .stream()
+#define LOG_INFO                                                      \
+  if (gdrpc::gdlog::Logger::logLevel() <= gdrpc::gdlog::Logger::INFO) \
+  gdrpc::gdlog::Logger(__FILE__, __LINE__, gdrpc::gdlog::Logger::INFO).stream()
+#define LOG_WARN \
+  gdrpc::gdlog::Logger(__FILE__, __LINE__, gdrpc::gdlog::Logger::WARN).stream()
 // #define LOG_ERROR \
-//   gdlog::Logger(__FILE__, __LINE__, gdlog::Logger::ERROR).stream()
+//   gdrpc::gdlog::Logger(__FILE__, __LINE__, gdrpc::gdlog::Logger::ERROR).stream()
 #define LOG_FATAL \
-  gdlog::Logger(__FILE__, __LINE__, gdlog::Logger::FATAL).stream()
-// #define LOG_SYSERR gdlog::Logger(__FILE__, __LINE__, false).stream()
-// #define LOG_SYSFATAL gdlog::Logger(__FILE__, __LINE__, true).stream()
+  gdrpc::gdlog::Logger(__FILE__, __LINE__, gdrpc::gdlog::Logger::FATAL).stream()
+// #define LOG_SYSERR gdrpc::gdlog::Logger(__FILE__, __LINE__, false).stream()
+// #define LOG_SYSFATAL gdrpc::gdlog::Logger(__FILE__, __LINE__, true).stream()
 
 #endif

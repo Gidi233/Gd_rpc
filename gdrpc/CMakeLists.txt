@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.0)
 project(gdrpc)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 file(GLOB_RECURSE SRC_LIST "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 include_directories(HEAD_PATH)
 

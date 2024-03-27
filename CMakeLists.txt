@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.10)  # 或者根据实际情况调整为更高�
 project(MyProject)
 
 # 设置 C++ 标准（例如 C++14）
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 
