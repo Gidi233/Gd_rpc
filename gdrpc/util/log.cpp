@@ -1,7 +1,7 @@
 #include "log.hpp"
 
 #include "current_thread.hpp"
-#include "time.hpp"
+#include "timestamp.hpp"
 namespace gdrpc {
 namespace gdlog {
 namespace {
@@ -19,8 +19,8 @@ const char* LogLevelName[Logger::NUM_LOG_LEVELS] = {
 Logger::Logger(const char* file, int line, LogLevel level, const char* func)
     // 不能在这=""感觉反而不直观了,明明应该是和声明处默认值不一样才会重定义啊？？？
     : stream_(), level_(level), line_(line), basename_(file), func_(func) {
-  stream_ << util::get_time() << ' ' << CurrentThread::tid() << ' '
-          << LogLevelName[level_] << ' ';
+  stream_ << util::Timestamp().get_time_format_8601() << ' '
+          << CurrentThread::tid() << ' ' << LogLevelName[level_] << ' ';
 }
 
 Logger::~Logger() {

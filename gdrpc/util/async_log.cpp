@@ -7,9 +7,6 @@
 #include <iostream>
 #include <string>
 
-#include "absl/memory/memory.h"
-#include "time.hpp"
-
 namespace gdrpc {
 namespace gdlog {
 AsyncLogging::AsyncLogging(const std::string& basename, off_t rollSize,
@@ -75,7 +72,8 @@ void AsyncLogging::threadFunc() {
       char buf[256];
       snprintf(buf, sizeof buf,
                "Dropped log messages at %s, %zd larger buffers\n",
-               util::get_time().c_str(), buffersToWrite.size() - 2);
+               util::Timestamp().get_time_format_8601().c_str(),
+               buffersToWrite.size() - 2);
       fputs(buf, stderr);
       file_.append(buf, static_cast<int>(strlen(buf)));
       buffersToWrite.erase(buffersToWrite.begin() + 2, buffersToWrite.end());
@@ -119,8 +117,9 @@ AsyncLogging::LogFile::LogFile(const std::string& basename, off_t rollSize,
       lastFlush_(0),
       cur_len_(0) {
   assert(basename.find('/') == std::string::npos);//只要程序名
-  time_t now = ::time(nullptr);
-  std::string filename = getLogFileName(basename_, &now);
+  util::Timestamp ts;
+  time_t now = ts.get_time_t();
+  std::string filename = getLogFileName(basename_, ts);
   lastRoll_ = now;
   lastFlush_ = now;
   file_.open(filename.c_str());
@@ -148,9 +147,10 @@ void AsyncLogging::LogFile::append(const char* logline, int len) {
 
 bool AsyncLogging::LogFile::rollFile() {
   // 按时间给个新名字，不滚动是因为时间没过一秒
-  time_t now = ::time(nullptr);
+  util::Timestamp ts;
+  time_t now = ts.get_time_t();
   if (now > lastRoll_) {
-    std::string filename = getLogFileName(basename_, &now);
+    std::string filename = getLogFileName(basename_, ts);
     lastRoll_ = now;
     lastFlush_ = now;
     file_.close();
@@ -161,16 +161,12 @@ bool AsyncLogging::LogFile::rollFile() {
 }
 
 std::string AsyncLogging::LogFile::getLogFileName(std::string_view basename,
-                                                  time_t* now) {
+                                                  const util::Timestamp& ts) {
   std::string filename;
   filename.reserve(basename.size() + 64);
   filename = basename;
 
-  char timebuf[32];
-  struct tm tm;
-  gmtime_r(now, &tm);  // FIXME: localtime_r ?
-  strftime(timebuf, sizeof timebuf, ".%Y%m%d-%H%M%S.", &tm);
-  filename += timebuf;
+  filename += ts.get_time();
 
   char buf[256];
   if (::gethostname(buf, sizeof buf) == 0) {

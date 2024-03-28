@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "noncopyable.hpp"
+#include "timestamp.hpp"
 
 namespace gdrpc {
 namespace gdlog {
@@ -72,7 +73,8 @@ class AsyncLogging : noncopyable {
    private:
     bool rollFile();
 
-    static std::string getLogFileName(std::string_view basename, time_t* now);
+    std::string getLogFileName(std::string_view basename,
+                               const util::Timestamp& ts);
 
     const std::string basename_;
     const off_t rollSize_;
