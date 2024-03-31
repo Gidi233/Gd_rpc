@@ -1,10 +1,10 @@
 #ifndef _LOG_H_
 #define _LOG_H_
 
+#include <cstring>
 #include <functional>
 #include <iostream>
 #include <sstream>
-
 namespace gdrpc {
 namespace gdlog {
 // 数据生产者部分
@@ -48,6 +48,11 @@ class Logger {
   };
   inline static FlushFunc g_flush_ = []() { std::cout.flush(); };
 };
+inline std::string err_msg() {
+  char err_msg[BUFSIZ];
+  strerror_r(errno, err_msg, sizeof(err_msg));
+  return err_msg;
+}
 }  // namespace gdlog
 }  // namespace gdrpc
 // #define LOG_TRACE                                        \
@@ -69,5 +74,7 @@ class Logger {
   gdrpc::gdlog::Logger(__FILE__, __LINE__, gdrpc::gdlog::Logger::FATAL).stream()
 // #define LOG_SYSERR gdrpc::gdlog::Logger(__FILE__, __LINE__, false).stream()
 // #define LOG_SYSFATAL gdrpc::gdlog::Logger(__FILE__, __LINE__, true).stream()
+
+#define ERR_MSG gdrpc::gdlog::err_msg()
 
 #endif

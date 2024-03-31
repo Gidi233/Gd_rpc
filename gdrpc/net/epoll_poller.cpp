@@ -19,7 +19,6 @@ inline const char* ToString(ChannelState state) {
       return "kAdded";
     case ChannelState::kDeleted:
       return "kDeleted";
-    // 如果可能还有其他未知状态，可以通过默认分支处理
     default:
       return "Unknown State";
   }
@@ -32,9 +31,7 @@ EPollPoller::EPollPoller(EventLoop* loop)
       events_(kInitEventListSize)  // vector<epoll_event>(16)
 {
   if (epollfd_ < 0) {
-    char err_msg[BUFSIZ];
-    strerror_r(errno, err_msg, sizeof(err_msg));
-    LOG_FATAL << "epoll_create error:" << err_msg;
+    LOG_FATAL << "epoll_create error:" << ERR_MSG;
   }
 }
 
@@ -115,8 +112,7 @@ void EPollPoller::fillActiveChannels(int numEvents,
   for (int i = 0; i < numEvents; ++i) {
     Channel* channel = static_cast<Channel*>(events_[i].data.ptr);
     channel->set_revents(events_[i].events);
-    activeChannels.push_back(
-        channel);  // EventLoop就拿到了它的Poller给它返回的所有发生事件的channel列表了
+    activeChannels.push_back(channel);
   }
 }
 
@@ -132,12 +128,10 @@ void EPollPoller::update(int operation, Channel* channel) {
   event.data.ptr = channel;
 
   if (::epoll_ctl(epollfd_, operation, fd, &event) < 0) {
-    char err_msg[BUFSIZ];
-    strerror_r(errno, err_msg, sizeof(err_msg));
     if (operation == EPOLL_CTL_DEL) {
-      LOG_FATAL << "epoll_ctl del error:" << err_msg;
+      LOG_FATAL << "epoll_ctl del error:" << ERR_MSG;
     } else {
-      LOG_FATAL << "epoll_ctl add/mod error:" << err_msg;
+      LOG_FATAL << "epoll_ctl add/mod error:" << ERR_MSG;
     }
   }
 }
