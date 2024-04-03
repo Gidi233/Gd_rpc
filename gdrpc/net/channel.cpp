@@ -1,5 +1,7 @@
 #include "channel.hpp"
 
+#include <sys/socket.h>
+
 #include "../util/log.hpp"
 #include "epoll_poller.hpp"
 #include "eventLoop.hpp"
@@ -63,6 +65,12 @@ void Channel::handleEventWithGuard(util::Timestamp receiveTime) {
     if (writeCallback_) {
       writeCallback_();
     }
+  }
+}
+
+void Channel::shutdownWrite() {
+  if (::shutdown(fd_, SHUT_WR) < 0) {
+    LOG_FATAL << "shutdownWrite error";
   }
 }
 }  // namespace net

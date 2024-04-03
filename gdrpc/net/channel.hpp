@@ -69,6 +69,11 @@ class Channel : noncopyable {
   EventLoop* ownerLoop() { return loop_; }
   void remove();
 
+  using FdOptFunc = std::function<void(int)>;
+  void setFdOpt(FdOptFunc func) { func(fd_); }
+
+  void shutdownWrite();
+
  private:
   void update();
   void handleEventWithGuard(util::Timestamp receiveTime);
