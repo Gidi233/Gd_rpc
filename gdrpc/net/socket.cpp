@@ -2,8 +2,6 @@
 
 #include <netinet/tcp.h>
 #include <string.h>
-#include <sys/socket.h>
-#include <sys/types.h>
 #include <unistd.h>
 
 #include "../util/log.hpp"
@@ -38,12 +36,6 @@ int Socket::accept(InetAddress* peeraddr) {
     peeraddr->setSockAddr(addr);
   }
   return connfd;
-}
-
-void Socket::shutdownWrite() {
-  if (::shutdown(sockfd_, SHUT_WR) < 0) {
-    LOG_FATAL << "shutdownWrite error";
-  }
 }
 
 }  // namespace net

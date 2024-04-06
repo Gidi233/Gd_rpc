@@ -19,8 +19,6 @@ class Socket : noncopyable {
   void listen();
   int accept(InetAddress* peeraddr);
 
-  void shutdownWrite();
-
   void setSockOpt(SockOptFunc func) { func(sockfd_); };
 
  private:
