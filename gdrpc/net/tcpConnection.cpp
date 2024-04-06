@@ -1,0 +1,294 @@
+#include "tcpConnection.hpp"
+
+#include <errno.h>
+#include <netinet/tcp.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/uio.h>
+
+#include <functional>
+#include <string>
+
+#include "../util/log.hpp"
+#include "channel.hpp"
+#include "eventLoop.hpp"
+#include "socket.hpp"
+namespace gdrpc {
+namespace net {
+
+const char* TcpConnection::get_state() const {
+  switch (state_) {
+    case kDisconnected:
+      return "kDisconnected";
+    case kConnecting:
+      return "kConnecting";
+    case kConnected:
+      return "kConnected";
+    case kDisconnecting:
+      return "kDisconnecting";
+    default:
+      return "unknown state";
+  }
+}
+
+static EventLoop* CheckLoopNotNull(EventLoop* loop) {
+  if (loop == nullptr) {
+    LOG_FATAL << " mainLoop is null!";
+  }
+  return loop;
+}
+
+TcpConnection::TcpConnection(EventLoop* loop, std::string_view nameArg,
+                             int sockfd, const InetAddress& localAddr,
+                             const InetAddress& peerAddr)
+    : loop_(CheckLoopNotNull(loop)),
+      name_(nameArg),
+      state_(kConnecting),
+      reading_(true),
+      channel_(new Channel(loop, sockfd)),
+      localAddr_(localAddr),
+      peerAddr_(peerAddr),
+      highWaterMark_(64 * 1024 * 1024)  // 64M
+{
+  channel_->setReadCallback([&](util::Timestamp ts) { handleRead(ts); });
+  channel_->setWriteCallback([&]() { handleWrite(); });
+  channel_->setCloseCallback([&]() { handleClose(); });
+  channel_->setErrorCallback([&]() { handleError(); });
+
+  LOG_INFO << "TcpConnection::ctor[" << name_.data() << "] at fd=" << sockfd;
+  channel_->setFdOpt([&](int sockfd) {
+    int flag = 1;
+    setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, &flag, sizeof(flag));
+  });
+}
+
+TcpConnection::~TcpConnection() {
+  LOG_INFO << "TcpConnection::dtor[" << name_.data()
+           << "] at fd=" << channel_->fd() << " state=" << get_state();
+}
+
+void TcpConnection::send(const std::string& buf) {
+  if (state_ == kConnected) {
+    if (loop_->isInLoopThread()) {
+      sendInLoop(buf.c_str(), buf.size());
+    } else {
+      loop_->runInLoop(std::bind(&TcpConnection::sendInLoop, shared_from_this(),
+                                 buf.c_str(),
+                                 buf.size()));  // 我认为需要share_ptr
+    }
+  }
+}
+
+void TcpConnection::sendInLoop(const void* data, size_t len) {
+  ssize_t nwrote = 0;
+  size_t remaining = len;
+  bool faultError = false;
+
+  if (state_ == kDisconnected) {
+    LOG_WARN << "TcpConnection " << name_.data()
+             << ":: disconnected, give up writing";
+    return;
+  }
+
+  // 表示channel_第一次开始写数据或者缓冲区没有待发送数据
+  if (!channel_->isWriting() && outputBuffer_.readableBytes() == 0) {
+    nwrote = ::write(channel_->fd(), data, len);
+    if (nwrote >= 0) {
+      remaining = len - nwrote;
+      if (remaining == 0 && writeCompleteCallback_) {
+        // 既然在这里数据全部发送完成，就不用在下面给channel设置epollout事件了
+        loop_->queueInLoop(
+            std::bind(writeCompleteCallback_, shared_from_this()));
+      }
+    } else  // nwrote < 0
+    {
+      nwrote = 0;
+      if (errno != EWOULDBLOCK) {
+        LOG_FATAL << "TcpConnection " << name_.data() << "::sendInLoop"
+                  << ERR_MSG;
+        if (errno == EPIPE || errno == ECONNRESET) {
+          faultError = true;
+        }
+      }
+    }
+  }
+  if (!faultError && remaining > 0) {
+    // 剩余长度
+    size_t oldLen = outputBuffer_.readableBytes();
+    // 积压待发送数据过多
+    if (oldLen + remaining >= highWaterMark_ && oldLen < highWaterMark_ &&
+        highWaterMarkCallback_) {
+      loop_->queueInLoop([&]() {
+        highWaterMarkCallback_(shared_from_this(), oldLen + remaining);
+      });
+    }
+    outputBuffer_.append((char*)data + nwrote, remaining);
+    // 注册写事件
+    if (!channel_->isWriting()) {
+      channel_->enableWriting();
+    }
+  }
+}
+
+void TcpConnection::shutdown() {
+  StateE s = kConnected;
+  if (state_.compare_exchange_strong(s, kDisconnecting)) {
+    loop_->runInLoop(std::bind(&TcpConnection::shutdownInLoop, this));
+  }
+}
+
+void TcpConnection::shutdownInLoop() {
+  if (!channel_->isWriting())  // 说明当前outputBuffer_的数据全部向外发送完成
+  {
+    channel_->shutdownWrite();
+  }
+  // 会在handlewrite发完后再调用该函数，所以此时未写完直接忽略
+}
+
+void TcpConnection::connectEstablished() {
+  setState(kConnected);
+  channel_->tie(shared_from_this());
+  channel_->enableReading();  // 注册读事件
+
+  connectionCallback_(shared_from_this());
+}
+void TcpConnection::connectDestroyed() {
+  auto expected = kConnected;
+  if (state_.compare_exchange_strong(expected, kDisconnected)) {
+    connectionCallback_(shared_from_this());
+  }  // 不通过epollhub回调断连时的情况
+  channel_->remove();
+}
+// 注册给channel
+void TcpConnection::handleRead(util::Timestamp receiveTime) {
+  int savedErrno = 0;
+  ssize_t n = inputBuffer_.readFd(channel_->fd(), &savedErrno);
+  if (n > 0) {
+    // 已建立连接的用户有可读事件发生了 调用用户传入的回调操作onMessage
+    messageCallback_(shared_from_this(), receiveTime);
+  } else if (n == 0)  // 客户端断开
+  {
+    handleClose();
+  } else {
+    errno = savedErrno;
+    LOG_FATAL << "TcpConnection" << name_.data() << "::handleRead";
+    handleError();
+  }
+}
+
+void TcpConnection::handleWrite() {
+  if (channel_->isWriting()) {
+    int savedErrno = 0;
+    ssize_t n = outputBuffer_.writeFd(channel_->fd(), &savedErrno);
+    if (n > 0) {
+      outputBuffer_.retrieve(n);
+      if (outputBuffer_.readableBytes() == 0) {
+        channel_->disableWriting();
+        if (writeCompleteCallback_) {
+          // 我觉得可以直接执行回调，等着这个FATAL打我脸
+          if (!loop_->isInLoopThread()) {
+            LOG_FATAL
+                << "TcpConnection " << name_.data()
+                << "::执行回调handleWrite的线程与TcpConnection所在线程不同";
+          }
+          loop_->queueInLoop(
+              std::bind(writeCompleteCallback_, shared_from_this()));
+        }
+        if (state_ == kDisconnecting) {
+          shutdownInLoop();
+        }
+      }
+    } else {
+      LOG_FATAL << "TcpConnection " << name_.data() << "::handleWrite";
+    }
+  } else {
+    LOG_FATAL << "TcpConnection  " << name_.data() << "::fd=" << channel_->fd()
+              << " is down, no more writing";
+  }
+}
+
+void TcpConnection::handleClose() {
+  LOG_INFO << "TcpConnection " << name_.data()
+           << "::handleClose fd=" << channel_->fd() << " state=" << get_state();
+  setState(kDisconnected);
+  channel_->disableAll();
+
+  TcpConnectionPtr connPtr(shared_from_this());
+  connectionCallback_(connPtr);
+  closeCallback_(connPtr);  // 执行的是TcpServer::removeConnection回调方法
+}
+
+void TcpConnection::handleError() {
+  int optval;
+  socklen_t optlen = sizeof optval;
+  int err = 0;
+  if (::getsockopt(channel_->fd(), SOL_SOCKET, SO_ERROR, &optval, &optlen) ==
+      0) {
+    errno = optval;
+  }
+  LOG_FATAL << "TcpConnection " << name_.data()
+            << "::handleError  - SO_ERROR:" << ERR_MSG;
+}
+
+bool TcpConnection::Buffer::retrieve(size_t len) {
+  if (len < readableBytes()) {
+    readerIndex_ += len;
+  } else if (len == readableBytes()) {
+    // 读完了，把地址刷到0
+    retrieveAll();
+  } else {
+    return false;
+  }
+  return true;
+}
+
+ssize_t TcpConnection::Buffer::readFd(int fd, int* saveErrno) {
+  // 栈额外空间,当buffer_暂时不够用时暂存数据，待buffer_重新分配足够空间后，在把数据交换给buffer_。
+  char extrabuf[65536] = {0};
+
+  struct iovec vec[2];
+  const size_t writable = writableBytes();
+
+  vec[0].iov_base = begin() + writerIndex_;
+  vec[0].iov_len = writable;
+
+  vec[1].iov_base = extrabuf;
+  vec[1].iov_len = sizeof(extrabuf);
+
+  const int iovcnt = (writable < sizeof(extrabuf)) ? 2 : 1;
+  const ssize_t n = ::readv(fd, vec, iovcnt);
+
+  if (n < 0) {
+    *saveErrno = errno;
+  } else if (n <= writable) {  // Buffer够存
+    writerIndex_ += n;
+  } else {  // extrabuf里面也写入了数据
+    writerIndex_ = buffer_.size();
+    append(extrabuf, n - writable);
+  }
+  return n;
+}
+
+ssize_t TcpConnection::Buffer::writeFd(int fd, int* saveErrno) {
+  ssize_t n = ::write(fd, peek(), readableBytes());
+  if (n < 0) {
+    *saveErrno = errno;
+  }
+  return n;
+}
+
+void TcpConnection::Buffer::makeSpace(size_t len) {
+  // 放不下 扩容
+  if (writableBytes() + prependableBytes() < len) {
+    buffer_.resize(writerIndex_ + len);
+  } else {
+    // 移动整合空间
+    size_t readable = readableBytes();
+    std::copy(begin() + readerIndex_, begin() + writerIndex_, begin());
+    readerIndex_ = 0;
+    writerIndex_ = readable;
+  }
+}
+}  // namespace net
+}  // namespace gdrpc
