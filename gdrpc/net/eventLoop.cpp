@@ -96,7 +96,10 @@ void EventLoop::queueInLoop(Functor cb) {
     std::unique_lock<std::mutex> lock(mutex_);
     pending_functors_.emplace_back(cb);
   }
-
+  // || callingPendingFunctors的意思是 当前loop正在执行回调中
+  // 但是loop的pendingFunctors_中又加入了新的回调 需要通过wakeup写事件
+  // 唤醒相应的需要执行上面回调操作的loop的线程
+  // 让loop()下一次poller_->poll()不再阻塞（因为有待办事件）
   if (!isInLoopThread() || calling_pending_functors_) {
     wakeup();
   }

@@ -15,7 +15,7 @@ Channel::Channel(EventLoop* loop, int fd)
       state_(ChannelState::kNew),
       tied_(false) {}
 
-Channel::~Channel() {}
+Channel::~Channel() { ::close(fd_); }
 
 void Channel::tie(const std::shared_ptr<void>& obj) {
   tie_ = obj;
