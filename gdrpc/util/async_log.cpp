@@ -160,7 +160,7 @@ bool AsyncLogging::LogFile::rollFile() {
   return false;
 }
 
-std::string AsyncLogging::LogFile::getLogFileName(std::string_view basename,
+std::string AsyncLogging::LogFile::getLogFileName(const std::string& basename,
                                                   const util::Timestamp& ts) {
   std::string filename;
   filename.reserve(basename.size() + 64);

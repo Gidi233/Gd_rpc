@@ -45,12 +45,12 @@ class EventLoopThreadPool : noncopyable {
   std::vector<EventLoop*> getAllLoops();
 
   bool started() const { return started_; }
-  std::string name() const { return name_; }
+  const std::string& name() const { return name_; }
 
  private:
   // 用户使用muduo创建的loop 如果线程数为1 那直接使用用户创建的loop
   EventLoop* baseLoop_;
-  std::string name_;
+  const std::string name_;
   bool started_;
   int numThreads_;
   int next_;  // 轮询的下标

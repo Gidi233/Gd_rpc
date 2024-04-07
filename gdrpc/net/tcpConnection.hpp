@@ -18,12 +18,12 @@ class Socket;
 class TcpConnection : noncopyable,
                       public std::enable_shared_from_this<TcpConnection> {
  public:
-  TcpConnection(EventLoop* loop, std::string_view nameArg, int sockfd,
+  TcpConnection(EventLoop* loop, const std::string& nameArg, int sockfd,
                 const InetAddress& localAddr, const InetAddress& peerAddr);
   ~TcpConnection();
 
   EventLoop* getLoop() const { return loop_; }
-  std::string_view& name() { return name_; }
+  const std::string& name() const { return name_; }
   const InetAddress& localAddress() const { return localAddr_; }
   const InetAddress& peerAddress() const { return peerAddr_; }
 
@@ -81,7 +81,7 @@ class TcpConnection : noncopyable,
 
   // 若为多Reactor 该loop_指向subloop 若为单Reactor 该loop_指向baseloop
   EventLoop* loop_;
-  std::string_view name_;
+  const std::string name_;
   // 可能别的连接（另一个线程）在交互时发现该连接（或拥有该连接的上层结构）状态异常，通过shutdown改变状态，需要atomic
   // 感觉其他线程能更改该状态的话就破坏了one loop per thread,
   // 只不过shutdown只是注册回调，不会有两个线程同时修改该资源

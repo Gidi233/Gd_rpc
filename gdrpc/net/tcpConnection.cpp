@@ -39,7 +39,7 @@ static EventLoop* CheckLoopNotNull(EventLoop* loop) {
   return loop;
 }
 
-TcpConnection::TcpConnection(EventLoop* loop, std::string_view nameArg,
+TcpConnection::TcpConnection(EventLoop* loop, const std::string& nameArg,
                              int sockfd, const InetAddress& localAddr,
                              const InetAddress& peerAddr)
     : loop_(CheckLoopNotNull(loop)),
@@ -56,7 +56,7 @@ TcpConnection::TcpConnection(EventLoop* loop, std::string_view nameArg,
   channel_->setCloseCallback([&]() { handleClose(); });
   channel_->setErrorCallback([&]() { handleError(); });
 
-  LOG_INFO << "TcpConnection::ctor[" << name_.data() << "] at fd=" << sockfd;
+  LOG_INFO << "TcpConnection::ctor[" << name_ << "] at fd=" << sockfd;
   channel_->setFdOpt([&](int sockfd) {
     int flag = 1;
     setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, &flag, sizeof(flag));
@@ -64,8 +64,8 @@ TcpConnection::TcpConnection(EventLoop* loop, std::string_view nameArg,
 }
 
 TcpConnection::~TcpConnection() {
-  LOG_INFO << "TcpConnection::dtor[" << name_.data()
-           << "] at fd=" << channel_->fd() << " state=" << get_state();
+  LOG_INFO << "TcpConnection::dtor[" << name_ << "] at fd=" << channel_->fd()
+           << " state=" << get_state();
 }
 
 void TcpConnection::send(const std::string& buf) {
@@ -86,8 +86,7 @@ void TcpConnection::sendInLoop(const void* data, size_t len) {
   bool faultError = false;
 
   if (state_ == kDisconnected) {
-    LOG_WARN << "TcpConnection " << name_.data()
-             << ":: disconnected, give up writing";
+    LOG_WARN << "TcpConnection " << name_ << ":: disconnected, give up writing";
     return;
   }
 
@@ -105,8 +104,7 @@ void TcpConnection::sendInLoop(const void* data, size_t len) {
     {
       nwrote = 0;
       if (errno != EWOULDBLOCK) {
-        LOG_FATAL << "TcpConnection " << name_.data() << "::sendInLoop"
-                  << ERR_MSG;
+        LOG_FATAL << "TcpConnection " << name_ << "::sendInLoop" << ERR_MSG;
         if (errno == EPIPE || errno == ECONNRESET) {
           faultError = true;
         }
@@ -172,7 +170,7 @@ void TcpConnection::handleRead(util::Timestamp receiveTime) {
     handleClose();
   } else {
     errno = savedErrno;
-    LOG_FATAL << "TcpConnection" << name_.data() << "::handleRead";
+    LOG_FATAL << "TcpConnection" << name_ << "::handleRead";
     handleError();
   }
 }
@@ -186,10 +184,10 @@ void TcpConnection::handleWrite() {
       if (outputBuffer_.readableBytes() == 0) {
         channel_->disableWriting();
         if (writeCompleteCallback_) {
-          // 我觉得可以直接执行回调，等着这个FATAL打我脸
+          // 我觉得可以直接执行回调，等着这个FATAL打我脸,应该只是调用时机的区别
           if (!loop_->isInLoopThread()) {
             LOG_FATAL
-                << "TcpConnection " << name_.data()
+                << "TcpConnection " << name_
                 << "::执行回调handleWrite的线程与TcpConnection所在线程不同";
           }
           loop_->queueInLoop(
@@ -200,17 +198,17 @@ void TcpConnection::handleWrite() {
         }
       }
     } else {
-      LOG_FATAL << "TcpConnection " << name_.data() << "::handleWrite";
+      LOG_FATAL << "TcpConnection " << name_ << "::handleWrite";
     }
   } else {
-    LOG_FATAL << "TcpConnection  " << name_.data() << "::fd=" << channel_->fd()
+    LOG_FATAL << "TcpConnection  " << name_ << "::fd=" << channel_->fd()
               << " is down, no more writing";
   }
 }
 
 void TcpConnection::handleClose() {
-  LOG_INFO << "TcpConnection " << name_.data()
-           << "::handleClose fd=" << channel_->fd() << " state=" << get_state();
+  LOG_INFO << "TcpConnection " << name_ << "::handleClose fd=" << channel_->fd()
+           << " state=" << get_state();
   setState(kDisconnected);
   channel_->disableAll();
 
@@ -227,7 +225,7 @@ void TcpConnection::handleError() {
       0) {
     errno = optval;
   }
-  LOG_FATAL << "TcpConnection " << name_.data()
+  LOG_FATAL << "TcpConnection " << name_
             << "::handleError  - SO_ERROR:" << ERR_MSG;
 }
 

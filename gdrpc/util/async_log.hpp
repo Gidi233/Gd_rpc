@@ -73,7 +73,7 @@ class AsyncLogging : noncopyable {
    private:
     bool rollFile();
 
-    std::string getLogFileName(std::string_view basename,
+    std::string getLogFileName(const std::string& basename,
                                const util::Timestamp& ts);
 
     const std::string basename_;
