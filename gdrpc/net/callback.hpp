@@ -2,8 +2,8 @@
 #define _CALLBACK_
 #include <functional>
 #include <memory>
-
-#include "tcpConnection.hpp"
+// 因为在不同的命名空间不能只前项声明
+#include "../util/timestamp.hpp"
 namespace gdrpc {
 namespace net {
 class TcpConnection;
