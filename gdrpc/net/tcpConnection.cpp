@@ -62,6 +62,30 @@ TcpConnection::TcpConnection(EventLoop* loop, const std::string& nameArg,
     setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, &flag, sizeof(flag));
   });
 }
+TcpConnection::TcpConnection(EventLoop* loop, const std::string& nameArg,
+                             std::unique_ptr<Channel>&& channel,
+                             const InetAddress& localAddr,
+                             const InetAddress& peerAddr)
+    : loop_(CheckLoopNotNull(loop)),
+      name_(nameArg),
+      state_(kConnecting),
+      reading_(true),
+      channel_(std::move(channel)),
+      localAddr_(localAddr),
+      peerAddr_(peerAddr),
+      highWaterMark_(64 * 1024 * 1024)  // 64M
+{
+  channel_->setReadCallback([&](util::Timestamp ts) { handleRead(ts); });
+  channel_->setWriteCallback([&]() { handleWrite(); });
+  channel_->setCloseCallback([&]() { handleClose(); });
+  channel_->setErrorCallback([&]() { handleError(); });
+
+  LOG_INFO << "TcpConnection::ctor[" << name_ << "] at fd=" << channel_->fd();
+  channel_->setFdOpt([&](int sockfd) {
+    int flag = 1;
+    setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, &flag, sizeof(flag));
+  });
+}
 
 TcpConnection::~TcpConnection() {
   LOG_INFO << "TcpConnection::dtor[" << name_ << "] at fd=" << channel_->fd()
@@ -228,7 +252,21 @@ void TcpConnection::handleError() {
     errno = optval;
   }
   LOG_FATAL << "TcpConnection " << name_
-            << "::handleError  - SO_ERROR:" << ERR_MSG;
+            << "::handleError  - SO_ERROR:" << ERR_MSG();
+}
+
+void TcpConnection::forceClose() {
+  StateE state = kConnected;
+  if (state_.compare_exchange_strong(state, kDisconnecting)) {
+    loop_->queueInLoop(
+        std::bind(&TcpConnection::forceCloseInLoop, shared_from_this()));
+  }
+}
+
+void TcpConnection::forceCloseInLoop() {
+  if (state_ == kConnected || state_ == kDisconnecting) {
+    handleClose();
+  }
 }
 
 bool TcpConnection::Buffer::retrieve(size_t len) {

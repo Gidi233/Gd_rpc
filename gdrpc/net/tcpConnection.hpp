@@ -20,6 +20,9 @@ class TcpConnection : noncopyable,
  public:
   TcpConnection(EventLoop* loop, const std::string& nameArg, int sockfd,
                 const InetAddress& localAddr, const InetAddress& peerAddr);
+  TcpConnection(EventLoop* loop, const std::string& nameArg,
+                std::unique_ptr<Channel>&& channel,
+                const InetAddress& localAddr, const InetAddress& peerAddr);
   ~TcpConnection();
 
   EventLoop* getLoop() const { return loop_; }
@@ -64,6 +67,7 @@ class TcpConnection : noncopyable,
 
   void connectEstablished();
   void connectDestroyed();
+  void forceClose();
 
  private:
   //  shutdown后输出buffer和eventloop中还有未传输的数据，所以需要kDisconnecting，执行完shutdown的回调后，等待接收到客户端close事件后彻底关闭
@@ -76,6 +80,7 @@ class TcpConnection : noncopyable,
   void handleClose();
   void handleError();
 
+  void forceCloseInLoop();
   void sendInLoop(const void* data, size_t len);
   void shutdownInLoop();
 
