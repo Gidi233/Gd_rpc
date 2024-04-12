@@ -48,10 +48,13 @@ class Logger {
   };
   inline static FlushFunc g_flush_ = []() { std::cout.flush(); };
 };
-inline std::string err_msg() {
+inline std::string err_msg(int err = errno) {
   char err_msg[BUFSIZ];
-  strerror_r(errno, err_msg, sizeof(err_msg));
-  return err_msg;
+  strerror_r(err, err_msg, sizeof(err_msg));  // 不知为啥 读不出msg
+  std::stringstream s;
+  s << err << " msg:";
+  s << err_msg;
+  return s.str();
 }
 }  // namespace gdlog
 }  // namespace gdrpc
@@ -75,6 +78,6 @@ inline std::string err_msg() {
 // #define LOG_SYSERR gdrpc::gdlog::Logger(__FILE__, __LINE__, false).stream()
 // #define LOG_SYSFATAL gdrpc::gdlog::Logger(__FILE__, __LINE__, true).stream()
 
-#define ERR_MSG gdrpc::gdlog::err_msg()
+#define ERR_MSG(err) gdrpc::gdlog::err_msg(err)
 
 #endif
