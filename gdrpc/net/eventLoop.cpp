@@ -22,7 +22,7 @@ const int kPollTimeMs = 10000;
 int createEventfd() {
   int evtfd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
   if (evtfd < 0) {
-    LOG_FATAL << "eventfd error: " << ERR_MSG;
+    LOG_FATAL << "eventfd error: " << ERR_MSG();
   }
   return evtfd;
 }

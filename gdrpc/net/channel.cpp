@@ -41,7 +41,8 @@ void Channel::handleEvent(util::Timestamp receiveTime) {
 }
 
 void Channel::handleEventWithGuard(util::Timestamp receiveTime) {
-  LOG_DEBUG << "channel handleEvent revents:" << return_events_;
+  LOG_DEBUG << "fd:" << fd_
+            << " channel handleEvent revents:" << return_events_;
   // 关闭
   if ((return_events_ & EPOLLHUP) && !(return_events_ & EPOLLIN)) {
     if (closeCallback_) {

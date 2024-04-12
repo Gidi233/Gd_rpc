@@ -31,7 +31,7 @@ EPollPoller::EPollPoller(EventLoop* loop)
       events_(kInitEventListSize)  // vector<epoll_event>(16)
 {
   if (epollfd_ < 0) {
-    LOG_FATAL << "epoll_create error:" << ERR_MSG;
+    LOG_FATAL << "epoll_create error:" << ERR_MSG();
   }
 }
 
@@ -129,9 +129,9 @@ void EPollPoller::update(int operation, Channel* channel) {
 
   if (::epoll_ctl(epollfd_, operation, fd, &event) < 0) {
     if (operation == EPOLL_CTL_DEL) {
-      LOG_FATAL << "epoll_ctl del error:" << ERR_MSG;
+      LOG_FATAL << "fd:" << fd << "epoll_ctl del error:" << ERR_MSG();
     } else {
-      LOG_FATAL << "epoll_ctl add/mod error:" << ERR_MSG;
+      LOG_FATAL << "fd:" << fd << "epoll_ctl add/mod error:" << ERR_MSG();
     }
   }
 }

@@ -42,6 +42,8 @@ class EventLoop : noncopyable {
   // 判断EventLoop对象是否在自己的线程里
   bool isInLoopThread() const { return threadId_ == CurrentThread::tid(); }
 
+  pid_t threadId() { return threadId_; }
+
  private:
   using ChannelList = std::vector<Channel*>;
   void handleRead(util::Timestamp ts);  // 被其他线程唤醒时读wakeupFd_的8字节

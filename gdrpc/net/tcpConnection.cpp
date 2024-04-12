@@ -104,7 +104,7 @@ void TcpConnection::sendInLoop(const void* data, size_t len) {
     {
       nwrote = 0;
       if (errno != EWOULDBLOCK) {
-        LOG_FATAL << "TcpConnection " << name_ << "::sendInLoop" << ERR_MSG;
+        LOG_FATAL << "TcpConnection " << name_ << "::sendInLoop" << ERR_MSG();
         if (errno == EPIPE || errno == ECONNRESET) {
           faultError = true;
         }
@@ -117,9 +117,8 @@ void TcpConnection::sendInLoop(const void* data, size_t len) {
     // 积压待发送数据过多
     if (oldLen + remaining >= highWaterMark_ && oldLen < highWaterMark_ &&
         highWaterMarkCallback_) {
-      loop_->queueInLoop([&]() {
-        highWaterMarkCallback_(shared_from_this(), oldLen + remaining);
-      });
+      loop_->queueInLoop(std::bind(highWaterMarkCallback_, shared_from_this(),
+                                   oldLen + remaining));
     }
     outputBuffer_.append((char*)data + nwrote, remaining);
     // 注册写事件
@@ -152,10 +151,13 @@ void TcpConnection::connectEstablished() {
   connectionCallback_(shared_from_this());
 }
 void TcpConnection::connectDestroyed() {
-  auto expected = kConnected;
-  if (state_.compare_exchange_strong(expected, kDisconnected)) {
-    connectionCallback_(shared_from_this());
-  }  // 不通过epollhub回调断连时的情况
+  std::array<StateE, 2> s = {kConnected, kDisconnecting};
+  for (auto state : s) {
+    if (state_.compare_exchange_strong(state, kDisconnected)) {
+      connectionCallback_(shared_from_this());
+      break;
+    }  // 不通过epollhub回调断连时的情况
+  }
   channel_->remove();
 }
 // 注册给channel
