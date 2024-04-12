@@ -95,16 +95,27 @@ TcpConnection::~TcpConnection() {
 void TcpConnection::send(const std::string& buf) {
   if (state_ == kConnected) {
     if (loop_->isInLoopThread()) {
-      sendInLoop(buf.c_str(), buf.size());
+      LOG_DEBUG << "TcpConnection::dirctly send";
+      sendInLoop(buf);
     } else {
+      // std::string buf_(buf);
+      // 要复制出一个对象，不然等异步执行的时候传进来的参数早就更改了，跟那go的老问题似的。
+      // 反而不是这的问题，bind默认传递值,要传递引用的话要显式std::ref(buf)
+      // https://stackoverflow.com/questions/31810985/why-does-bind-not-work-with-pass-by-reference/31811096#31811096
+      LOG_DEBUG << "thread[" << CurrentThread::tid()
+                << "]TcpConnection::send to thread[" << loop_->threadId()
+                << "]";
       loop_->runInLoop(std::bind(&TcpConnection::sendInLoop, shared_from_this(),
-                                 buf.c_str(),
-                                 buf.size()));  // 我认为需要share_ptr
+                                 buf));  // 我认为需要share_ptr
     }
   }
 }
 
-void TcpConnection::sendInLoop(const void* data, size_t len) {
+// void TcpConnection::sendInLoop(const void* data, size_t len) {
+// 这样不行，data不知为何一直指向同一个地址，里面缓冲区的内容早就变了
+void TcpConnection::sendInLoop(const std::string& s) {
+  ssize_t len = s.length();
+  const void* data = s.c_str();
   ssize_t nwrote = 0;
   size_t remaining = len;
   bool faultError = false;

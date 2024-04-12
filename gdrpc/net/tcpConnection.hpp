@@ -81,7 +81,7 @@ class TcpConnection : noncopyable,
   void handleError();
 
   void forceCloseInLoop();
-  void sendInLoop(const void* data, size_t len);
+  void sendInLoop(const std::string& s);
   void shutdownInLoop();
 
   // 若为多Reactor 该loop_指向subloop 若为单Reactor 该loop_指向baseloop
