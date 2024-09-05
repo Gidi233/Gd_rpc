@@ -4,6 +4,13 @@ namespace util {
 
 Timestamp::Timestamp(std::chrono::system_clock::time_point tp)
     : time_point_(tp) {}
+
+int64_t Timestamp::get_ms() const {
+  return std::chrono::duration_cast<std::chrono::milliseconds>(
+             time_point_.time_since_epoch())
+      .count();
+}
+
 time_t Timestamp::get_time_t() const {
   return std::chrono::system_clock::to_time_t(time_point_);
 }

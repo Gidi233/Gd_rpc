@@ -13,6 +13,7 @@ class Timestamp {
   Timestamp(const Timestamp&) = default;
   Timestamp& operator=(const Timestamp&) = default;
   time_t get_time_t() const;
+  int64_t get_ms() const;
   // static void set_time_zone(const std::string& tz);
   // gmtime() UTC time  or localtime_r
   std::string get_time() const;

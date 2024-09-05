@@ -37,7 +37,7 @@ class EPollPoller {
   ChannelMap channels_;
 
   EventLoop* loop_;  // 定义Poller所属的事件循环EventLoop
-  static const int kInitEventListSize = 16;
+  static constexpr int kInitEventListSize = 16;
 
   // 填写活跃的连接
   void fillActiveChannels(int numEvents, ChannelList& activeChannels) const;

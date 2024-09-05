@@ -7,7 +7,6 @@
 namespace gdrpc {
 namespace net {
 class TcpConnection;
-class Timestamp;
 
 using TcpConnectionPtr = std::shared_ptr<TcpConnection>;
 using ConnectionCallback = std::function<void(const TcpConnectionPtr&)>;

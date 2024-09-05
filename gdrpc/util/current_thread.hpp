@@ -11,7 +11,6 @@ extern __thread int t_cachedTid;
 
 void cacheTid();
 
-// 将定义移除，仅保留函数声明，不然报multiple definition都在此处
 int tid();
 
 }  // namespace CurrentThread

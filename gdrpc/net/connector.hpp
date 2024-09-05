@@ -32,8 +32,12 @@ class Connector : noncopyable, public std::enable_shared_from_this<Connector> {
 
  private:
   enum States { kDisconnected, kConnecting, kConnected };
-  static const int kMaxRetryDelayMs = 30 * 1000;
-  static const int kInitRetryDelayMs = 500;
+  // 用const会有错误：/usr/bin/ld: ../../lib/libgdrpc.a(connector.cpp.o): in
+  // function `gdrpc::net::Connector::retry(int)':
+  // connector.cpp:(.text+0x18df): undefined reference to
+  // `gdrpc::net::Connector::kMaxRetryDelayMs'
+  static constexpr int kMaxRetryDelayMs = 30 * 1000;
+  static constexpr int kInitRetryDelayMs = 500;
 
   void setState(States s) { state_ = s; }
   void startInLoop();

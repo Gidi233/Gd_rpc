@@ -17,7 +17,7 @@ namespace net {
 __thread EventLoop* t_loopInThisThread = nullptr;
 
 // 超时时间
-const int kPollTimeMs = 10000;
+const int kPollTimeMs = 1;
 
 int createEventfd() {
   int evtfd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
@@ -34,7 +34,8 @@ EventLoop::EventLoop()
       threadId_(CurrentThread::tid()),
       poller_(new EPollPoller(this)),
       wakeupFd_(createEventfd()),
-      wakeupChannel_(new Channel(this, wakeupFd_)) {
+      wakeupChannel_(new Channel(this, wakeupFd_)),
+      timeWheel_(TIMINGWHEEL_LEN) {
   LOG_DEBUG << "EventLoop created " << this << " in thread " << threadId_;
   if (t_loopInThisThread) {
     LOG_FATAL << "Another EventLoop " << t_loopInThisThread
@@ -64,6 +65,7 @@ void EventLoop::loop() {
   while (!quit_) {
     active_channels_.clear();
     epoll_reture_time_ = poller_->poll(kPollTimeMs, active_channels_);
+    doScheduledFunctors(epoll_reture_time_);
     for (Channel* channel : active_channels_) {
       channel->handleEvent(epoll_reture_time_);
     }
@@ -104,6 +106,8 @@ void EventLoop::queueInLoop(Functor cb) {
     wakeup();
   }
 }
+
+void EventLoop::runAfter(int64_t ms, Functor cb) { timeWheel_.addTask(ms, cb); }
 
 void EventLoop::handleRead(util::Timestamp ts) {
   uint64_t one = 1;
@@ -148,6 +152,10 @@ void EventLoop::doPendingFunctors() {
   }
 
   calling_pending_functors_ = false;
+}
+
+void EventLoop::doScheduledFunctors(util::Timestamp& ts) {
+  timeWheel_.takeAllTimeout(ts);
 }
 }  // namespace net
 }  // namespace gdrpc

@@ -177,10 +177,9 @@ void Connector::retry(int sockfd) {
              << serverAddr_.toIpPort() << " in " << retryDelayMs_
              << " milliseconds. ";
     loop_->queueInLoop(std::bind(&Connector::startInLoop, shared_from_this()));
-    // TODO(lu): 类似重传机制的重连接
-    // loop_->runAfter(retryDelayMs_/1000.0,
-    // std::bind(&Connector::startInLoop, shared_from_this()));
-    // retryDelayMs_ = std::min(retryDelayMs_ * 2, kMaxRetryDelayMs);
+    loop_->runAfter(retryDelayMs_,
+                    std::bind(&Connector::startInLoop, shared_from_this()));
+    retryDelayMs_ = std::min(retryDelayMs_ * 2, kMaxRetryDelayMs);
   } else {
     LOG_DEBUG << "do not connect";
   }
