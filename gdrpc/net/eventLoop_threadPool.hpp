@@ -26,6 +26,7 @@ class EventLoopThreadPool : noncopyable {
 
   void setSchedulingFunction(SchedulingFunction func) { getNextLoop = func; }
 
+  // TODO: 多个负载均衡策略
   // 如果工作在多线程中，baseLoop_(mainLoop)会默认以轮询的方式分配Channel给subLoop
   SchedulingFunction getNextLoop = [&]() {
     // 如果只设置一个线程 也就是只有一个mainReactor 无subReactor

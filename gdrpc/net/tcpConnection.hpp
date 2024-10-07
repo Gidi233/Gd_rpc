@@ -1,5 +1,6 @@
 #ifndef _TCPCONNECTION_
 #define _TCPCONNECTION_
+#include <any>
 #include <atomic>
 #include <memory>
 #include <string>
@@ -43,6 +44,8 @@ class TcpConnection : noncopyable,
     retrieve(n);
     return n;
   }
+
+  void setContext(const std::any& context) { context_ = context; }
 
   void send(const std::string& buf);
   void shutdown();
@@ -97,6 +100,8 @@ class TcpConnection : noncopyable,
   // Acceptor => mainloop TcpConnection => subloop
   std::unique_ptr<Channel> channel_;
 
+  // 保管其上层对象的生命周期
+  std::any context_;
   const InetAddress localAddr_;
   const InetAddress peerAddr_;
 
@@ -109,6 +114,7 @@ class TcpConnection : noncopyable,
   CloseCallback closeCallback_;
   size_t highWaterMark_;
 
+  // 不该乱改的，改完api读取还要多复制一次
   class Buffer {
    public:
     static constexpr size_t kInitialSize = 1024;

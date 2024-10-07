@@ -15,8 +15,9 @@ using WriteCompleteCallback = std::function<void(const TcpConnectionPtr&)>;
 using HighWaterMarkCallback =
     std::function<void(const TcpConnectionPtr&, size_t)>;
 
-using MessageCallback =
-    std::function<void(const TcpConnectionPtr&, util::Timestamp)>;
+using MessageCallback = std::function<void(
+    const TcpConnectionPtr&,
+    util::Timestamp)>;  // weak_ptr<atomic_bool> isCancel,optional cancelCb
 }  // namespace net
 }  // namespace gdrpc
 #endif

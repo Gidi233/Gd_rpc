@@ -1,9 +1,7 @@
 cmake_minimum_required(VERSION 3.10)  # 或者根据实际情况调整为更高版本
 
-# 定义项目名称
 project(MyProject)
 
-# 设置 C++ 标准（例如 C++14）
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
@@ -14,6 +12,8 @@ set(GDRPC_LIB gdrpc)
 set(HEAD_PATH ${CMAKE_CURRENT_SOURCE_DIR}/gdrpc)
 # 静态库生成的路径
 set(LIB_PATH ${CMAKE_CURRENT_SOURCE_DIR}/lib)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DTHREADED")
+
 # 添加 gdrpc 子目录
 add_subdirectory(gdrpc)
 

@@ -70,6 +70,7 @@ void Connector::connect() {
   int savedErrno = (ret == 0) ? 0 : errno;
   LOG_DEBUG << "::connect() return " << ERR_MSG(savedErrno);
   switch (savedErrno) {
+    // TODO(lu)：了解此时，tcp连接状态
     case 0:
     case EINPROGRESS:
     case EINTR:

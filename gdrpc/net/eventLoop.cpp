@@ -107,7 +107,10 @@ void EventLoop::queueInLoop(Functor cb) {
   }
 }
 
-void EventLoop::runAfter(int64_t ms, Functor cb) { timeWheel_.addTask(ms, cb); }
+std::optional<std::weak_ptr<gdrpc::util::Task>> EventLoop::runAfter(
+    int64_t afterMs, Functor cb) {
+  return timeWheel_.addTask(afterMs, cb);
+}
 
 void EventLoop::handleRead(util::Timestamp ts) {
   uint64_t one = 1;

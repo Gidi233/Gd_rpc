@@ -62,8 +62,8 @@ void TcpServer::newConnection(int sockfd, const InetAddress& peerAddr) {
   LOG_INFO << "TcpServer::newConnection [" << name_ << "] - new connection ["
            << connName << "] from " << peerAddr.toIpPort();
 
-  TcpConnectionPtr conn(
-      new TcpConnection(ioLoop, connName, sockfd, addr_, peerAddr));
+  TcpConnectionPtr conn = std::make_shared<TcpConnection>(
+      ioLoop, connName, sockfd, addr_, peerAddr);
   connections_[connName] = conn;
   // 下面的回调都是用户设置给TcpServer =>
   // TcpConnection的，后传递给Channel的handlexxx中

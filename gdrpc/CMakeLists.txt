@@ -8,7 +8,12 @@ include_directories(HEAD_PATH)
 set(LIBRARY_OUTPUT_PATH ${LIB_PATH})
 # 生成静态库
 add_library(gdrpc STATIC ${SRC_LIST})
+# include_directories(${PROTOBUF_INCLUDE_DIRS})
+# include_directories(${ZOOKEEPER_INCLUDE_DIRS})
+# find_package(zookeeper_mt)
+# find_package(protobuf)
 
+target_link_libraries(gdrpc zookeeper_mt protobuf)
 
 # 包含库路径
 # link_directories(${PROJECT_SOURCE_DIR}/lib)

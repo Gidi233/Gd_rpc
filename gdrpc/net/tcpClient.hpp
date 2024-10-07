@@ -12,7 +12,6 @@ namespace gdrpc {
 namespace net {
 
 class Connector;
-
 class TcpClient : noncopyable {
  public:
   TcpClient(EventLoop* loop, const InetAddress& serverAddr,
@@ -34,6 +33,16 @@ class TcpClient : noncopyable {
   void enableRetry() { retry_ = true; }
 
   const std::string& name() const { return name_; }
+
+  // 异步的发送 message
+  // 如果发送 message 成功，会调用 done 函数， 函数的入参就是 message 对象
+  // void writeMessage(AbstractProtocol::s_ptr message,
+  // std::function<void(AbstractProtocol::s_ptr)> done);
+
+  // // 异步的读取 message
+  // // 如果读取 message 成功，会调用 done 函数， 函数的入参就是 message 对象
+  // void readMessage(const std::string& msg_id,
+  //                  std::function<void(AbstractProtocol::s_ptr)> done);
 
   // 线程不安全，但想不到什么时候会多线程同时设置回调
   void setConnectionCallback(ConnectionCallback cb) {
@@ -68,6 +77,7 @@ class TcpClient : noncopyable {
   std::binary_semaphore latch_;
   TcpConnectionPtr connection_;
 };
+using TcpClientPtr = std::shared_ptr<TcpClient>;
 
 }  // namespace net
 }  // namespace gdrpc

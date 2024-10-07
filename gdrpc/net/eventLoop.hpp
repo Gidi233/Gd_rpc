@@ -33,7 +33,8 @@ class EventLoop : noncopyable {
   // 在对应loop中执行回调
   void runInLoop(Functor cb);
   void queueInLoop(Functor cb);
-  void runAfter(int64_t ms, Functor cb);
+  std::optional<std::weak_ptr<gdrpc::util::Task>> runAfter(int64_t ms,
+                                                           Functor cb);
 
   // 通过eventfd唤醒loop所在的线程
   void wakeup();
