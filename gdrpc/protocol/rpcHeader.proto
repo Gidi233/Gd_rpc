@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package gdrpc.rpc;
+enum  messageType 
+{
+  Request=0;
+  Response=1;
+  Cancel=2;
+  Heartbeat=3;
+  // RequestStream,ResponseStream
+};
+
+enum ErrorCode
+{
+  NO_ERROR = 0;
+  WRONG_PROTO = 1;
+  NO_SERVICE = 2;
+  NO_METHOD = 3;
+  INVALID_REQUEST = 4;
+  INVALID_RESPONSE = 5;
+  TIMEOUT = 6;
+}
+
+
+message RpcHeader
+{
+    uint32 msg_id_=1;
+    bytes version_=2;
+    bytes service_name_=3;
+    bytes method_name_=4;
+    messageType message_type_=5;
+    ErrorCode error_code_=6;
+    uint32 extendInfo_len_=7;
+    uint32 payload_len_=8;
+}
