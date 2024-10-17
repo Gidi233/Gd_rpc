@@ -31,7 +31,12 @@ make clean 或 cmake --build . --target clean
 
 ## 相关笔记
 [基础网络库](https://blog.csdn.net/qq_74050480/article/details/137730499)
-[rpc设计](https://blog.csdn.net/qq_74050480/article/details/142747708)
+[rpc设计与grpc](https://blog.csdn.net/qq_74050480/article/details/142747708)
 [关于回调与协程](https://blog.csdn.net/qq_74050480/article/details/136888546)
 
 [基于编译时反射的通用序列化引擎](https://github.com/qicosmos/iguana)(本来想抽象可以使用不同的序列化协议，但得继承 PB 的message 不好实现，遂放弃)
+
+## TODO
+- 服务端限流：计数器、滑动窗口、漏桶算法、令牌桶算法...
+- 认证鉴权：tls、oauth2
+- 拦截器
